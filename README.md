@@ -8,7 +8,7 @@ The [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Servic
 
 ### Install wrangler with nvm
 
-*In theory*, you should be able to install `nvm` with `curl`, create a dot-file for my shell, and then include a script.
+*In theory*, you should be able to install `nvm` with `curl`, create a dot-file for your shell, and then include a script.
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | zsh
