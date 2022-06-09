@@ -1,204 +1,105 @@
-A [Cloudflare Worker](https://blog.cloudflare.com/introducing-cloudflare-workers/) is JavaScript you write that runs on Cloudflare's edge. A [Cloudflare Service Worker](https://blog.cloudflare.com/cloudflare-workers-unleashed/) is specifically a worker which handles HTTP traffic and is written against the Service Worker API. Cloudflare Workers derive their name from Web Workers, and more specifically Service Workers.
+# Example Project from [A First Look at Cloudflare Workers](https://dev.to/ajcwebdev/a-first-look-at-cloudflare-workers-20km)
 
-The [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) is a W3C standard API for scripts that run in the background in a web browser and intercept HTTP requests. Cloudflare Workers are written against the same standard API, but run on Cloudflare's server instead of in a browser.
+A [Cloudflare Worker](https://blog.cloudflare.com/introducing-cloudflare-workers/) contains JavaScript that runs on Cloudflare's edge servers. A [Cloudflare Service Worker](https://blog.cloudflare.com/cloudflare-workers-unleashed/) is a worker written against the Service Worker API and specifically handles HTTP traffic. Cloudflare Workers derive their name from Web Workers, specifically Service Workers.
 
-## Install wrangler CLI
+The [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) is a W3C standard API for scripts that run in the background in a web browser and intercept HTTP requests. Cloudflare Workers are written against the same standard API but run on Cloudflare's edge network instead of the browser.
 
-[`wrangler`](https://github.com/cloudflare/wrangler) is an officially supported CLI tool for [Cloudflare Workers](https://workers.cloudflare.com/). It's a bit of a process to install. I recommend starting at the [Wrangler CLI Install/Update page on the Cloudflare Documentation site](https://developers.cloudflare.com/workers/cli-wrangler/install-update) to see if any of the options listed are already configured on your machine. Use Cargo if you can.
+## Outline
 
-### Install wrangler with nvm
+* [Install the Wrangler CLI](#install-the-wrangler-cli)
+  * [Install Wrangler with Volta](#install-wrangler-with-volta)
+  * [Login to Cloudflare Account](#login-to-cloudflare-account)
+* [Workers Project](#workers-project)
+  * [Wrangler Configuration File](#wrangler-configuration-file)
+  * [Workers Script](#workers-script)
+  * [Test Worker Locally](#test-worker-locally)
+* [Deploy Worker to Cloudflare](#deploy-worker-to-cloudflare)
 
-*In theory*, you should be able to install `nvm` with `curl`, create a dot-file for your shell, and then include a script.
+## Install the Wrangler CLI
 
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | zsh
-touch .zshrc
-```
+[`wrangler`](https://github.com/cloudflare/wrangler) is an officially supported CLI tool for [Cloudflare Workers](https://workers.cloudflare.com/).
 
-Add to `.zshrc` file.
+### Install Wrangler with Volta
 
-```
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-```
-
-Then I should be able to install the current Node LTS and finally `wrangler`.
-
-```bash
-nvm install 14.16.1
-npm install -g @cloudflare/wrangler
-```
-
-### Install with cargo
-
-Due to my own user error I ran into issues with `nvm`. I ended up finding a workaround with [`HomeBrew`](https://brew.sh/), [`cargo`](https://doc.rust-lang.org/cargo/getting-started/installation.html), and [`rustup`](https://rustup.rs/) that took about a minute to install and configure. M1 users may find this easier.
+[Volta.sh](https://volta.sh/) is a JavaScript tool manager that can be used for global installs and switching between different versions of Node. It can be installed with the following `curl` command (and if you are not using `zsh` then change the end of the command to `bash`).
 
 ```bash
-brew install cloudflare-wrangler
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-rustup target add x86_64-apple-darwin
-cargo install wrangler --target=x86_64-apple-darwin
+curl https://get.volta.sh | zsh
+volta install node
+npm install -g wrangler
 ```
 
-### Check version number
+Visit the [Workers documentation](https://developers.cloudflare.com/workers/wrangler/get-started/) if you encounter issues while trying to install Wrangler. Check the version number with the following command:
 
 ```bash
 wrangler --version
 ```
 
-Output:
+> Note: In this article I used version `2.0.8`.
 
-```
-👷 ✨  wrangler 1.16.1
-```
-
-## Create project
-
-`wrangler generate` will scaffold a Cloudflare Workers project from a [public GitHub repository](https://github.com/cloudflare/worker-template).
-
-```bash
-wrangler generate ajcwebdev-workers
-```
-
-If you haven't already, make sure to [create a Cloudflare account](https://dash.cloudflare.com/). Go to your profile and then your [API tokens tab](https://dash.cloudflare.com/profile/api-tokens). Create a token with the Cloudflare Workers template.
-
-![02-api-tokens](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/x4rd45ul02kpd1rk5ld3.png)
-
-Click "Create Token" to create a token.
-
-![03-create-api-token](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/reedsh9s4z3nsj5kqr6c.png)
-
-Click "Use template" next to Edit Cloudflare Workers to use Edit Cloudflare Workers template.
-
-![04-create-token](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/co5ficwdni1e09eosnqh.png)
-
-Leave the default permissions and add your account and zone resources.
-
-![05-api-token-summary](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/sj2s68a5t2o0zul1nprc.png)
-
-Click "Create Token" to create the token and make sure to save it somewhere you can find it.
-
-### Test your token
-
-You can test your new token with the following `curl` command.
-
-```curl
-curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-     -H "Authorization: Bearer TOKEN" \
-     -H "Content-Type:application/json"
-```
-
-If your token is working you will receive a response like this.
-
-```json
-{
-  "result":{
-    "id":"1234",
-    "status":"active"
-  },
-  "success":true,
-  "errors":[],
-  "messages":[{
-    "code":10000,
-    "message":"This API Token is valid and active",
-    "type":null
-  }]
-}
-```
-
-### Add account_id to wrangler.toml
-
-Copy your `account_id` from your Workers dashboard.
-
-![06-account-id](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/wx33uzdsnsajtwfzfbsp.png)
-
-Open `wrangler.toml` and add your `account_id`.
-
-```toml
-name = "ajcwebdev-workers"
-type = "javascript"
-
-account_id = "c64"
-workers_dev = true
-route = ""
-zone_id = ""
-```
-
-### Configure keys with `wrangler config`
-
-`wrangler config` is an interactive command that will authenticate Wrangler by prompting you for a Cloudflare API Token or Global API key. If you want to use the Global API Key it will promptly yell at you for making poor life decision.
-
-```bash
-wrangler config
-```
-
-Enter your API token.
-
-```
-Validating credentials...
-Successfully configured.
-You can find your configuration file at:
-/Users/ajcwebdev/.wrangler/config/default.toml
-```
-
-If you run into issues with your keys you may be able to just use `wrangler login` instead. 🤷‍♂️
+### Login to Cloudflare Account
 
 ```bash
 wrangler login
 ```
 
-## Project files
+## Workers Project
 
-### package.json
+A Workers project can be very concise and the only files required are `index.js` and `wrangler.toml`.
 
-You may notice that we don't have any dev or build scripts. There aren't even any dependencies except the entirely useless prettier.
+### Wrangler Configuration File
 
-```json
-{
-  "private": true,
-  "name": "ajcwebdev-workers",
-  "version": "1.0.0",
-  "description": "A template for kick starting a Cloudflare Workers project",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "format": "prettier --write '**/*.{js,css,json,md}'"
-  },
-  "author": "ajcwebdev <anthony@stepzen.com>",
-  "license": "MIT",
-  "devDependencies": {
-    "prettier": "^1.18.2"
+`wrangler` uses a [`wrangler.toml` configuration file](https://developers.cloudflare.com/workers/wrangler/configuration/) to customize the development and publishing setup for a Worker.
+
+```toml
+# wrangler.toml
+
+name = "ajcwebdev-workers"
+main = "index.js"
+compatibility_date = "2022-06-09"
+```
+
+This includes three configuration options:
+
+* `name` sets the name of your Worker.
+* `main` sets the entrypoint/path to the file that will be executed.
+* `compatibility_date` is used to determine which version of the Workers runtime is used.
+
+### Workers Script
+
+`index.js` will contain the content of the Workers script. The script will notify the visitor of your website that you nailed it.
+
+```javascript
+// index.js
+
+export default {
+  async fetch(request) {
+    return new Response("Nailed it!", {
+      headers: { 'X-Awesomeness': '9000' }
+    })
   }
 }
 ```
 
-This is because Cloudflare Workers run in the cloud, and as we all know, [the cloud is just someone else's computer](https://medium.com/@storjproject/there-is-no-cloud-it-s-just-someone-else-s-computer-6ecc37cdcfe5). To run this code we need to deploy it and execute it on Cloudflare's network.
+We don't add header `X-Awesomeness` because we need to, we add it because we can. 
 
-### index.js
+### Test Worker Locally
 
-`index.js` is the content of the Workers script. The content will notify the user of your website that you nailed it.
+Start a local server for developing your Worker with [`wrangler dev`](https://developers.cloudflare.com/workers/wrangler/commands/#dev).
 
-```javascript
-addEventListener('fetch', event => {
-  event.respondWith(
-    handleRequest(event.request)
-  )
-})
-
-async function handleRequest(request) {
-  return new Response('Nailed it', {
-    headers: {
-      'content-type': 'text/plain',
-      'X-Awesomeness': '9000'
-    },
-  })
-}
+```bash
+wrangler dev
 ```
 
-We don't add header `X-Awesomeness` because we need to, we add it because we can.
+Open [localhost:8787/](http://localhost:8787/) to see the response or use `curl` to send an HTTP GET method.
 
-## Deploy with `wrangler publish`
+```bash
+curl "http://localhost:8787/"
+```
+
+> Note: Add `-i` option to see header information.
+
+## Deploy Worker to Cloudflare
 
 `wrangler publish` publishes your Worker to Cloudflare.
 
@@ -206,16 +107,16 @@ We don't add header `X-Awesomeness` because we need to, we add it because we can
 wrangler publish
 ```
 
-Open up your favorite API client and make a GET request to your endpoint.
+Output:
 
-![07-insomnia-request](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/kjm39zouurqqedcfxz82.png)
+```
+Uploaded ajcwebdev-workers (0.76 sec)
+Published ajcwebdev-workers (0.20 sec)
+  ajcwebdev-workers.anthonycampolo.workers.dev
+```
 
-You can also visit the endpoint with your browser of choice.
-
-![08-browser-request](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/6b503pfgqlau3bvn99xx.png)
-
-Open up the Network tab to see how much more awesome your response headers are.
-
-![09-response-headers](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/b2g1kvq0sti966h0avjj.png)
+```bash
+curl "https://ajcwebdev-workers.anthonycampolo.workers.dev"
+```
 
 You can check out this amazing website yourself [here](https://ajcwebdev-workers.anthonycampolo.workers.dev/).
