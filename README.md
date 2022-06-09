@@ -1,4 +1,4 @@
-# Example Project from [A First Look at Cloudflare Workers](https://dev.to/ajcwebdev/a-first-look-at-cloudflare-workers-20km)
+# Example Project from [A First Look at Cloudflare Workers](https://ajcwebdev.com/a-first-look-at-cloudflare-workers)
 
 A [Cloudflare Worker](https://blog.cloudflare.com/introducing-cloudflare-workers/) contains JavaScript that runs on Cloudflare's edge servers. A [Cloudflare Service Worker](https://blog.cloudflare.com/cloudflare-workers-unleashed/) is a worker written against the Service Worker API and specifically handles HTTP traffic. Cloudflare Workers derive their name from Web Workers, specifically Service Workers.
 
